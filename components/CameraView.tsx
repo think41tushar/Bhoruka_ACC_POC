@@ -1,15 +1,46 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Vibration } from 'react-native'; // Import Vibration
 import { CameraView as ExpoCameraView } from 'expo-camera';
 import { MovementDisplay } from './MovementDisplay';
 import { RecordingButton } from './RecordingButton';
+import { DirectionArrow } from './DirectionArrow'; // Import DirectionArrow
 import { useCamera } from '../hooks/useCamera';
 import { useUserMovement } from '../hooks/useUserMovement';
-import { CameraViewProps } from '../types';
+import { CameraViewProps, Direction } from '../types'; // Import Direction
 
 export const CameraView: React.FC<CameraViewProps> = ({ onRecordingStateChange }) => {
-  const { cameraRef, recordingState, toggleRecording } = useCamera();
+  const { cameraRef, recordingState, toggleRecording: originalToggleRecording } = useCamera();
   const userMovement = useUserMovement(recordingState.isRecording);
+  
+  // State to hold the target direction for the user
+  const [targetDirection, setTargetDirection] = React.useState<Direction>(null);
+
+  // Wrapper for toggleRecording to add our new logic
+  const toggleRecording = () => {
+    if (!recordingState.isRecording) {
+      // Set a random direction when starting to record
+      const newDirection = Math.random() < 0.5 ? 'left' : 'right';
+      setTargetDirection(newDirection);
+    } else {
+      // Clear direction when stopping
+      setTargetDirection(null);
+    }
+    originalToggleRecording();
+  };
+
+  // Effect to handle vibration for incorrect movement
+  React.useEffect(() => {
+    if (!recordingState.isRecording || !targetDirection) return;
+
+    const movedOpposite = 
+      (targetDirection === 'left' && userMovement.isMovingRight) ||
+      (targetDirection === 'right' && userMovement.isMovingLeft);
+
+    if (movedOpposite) {
+      Vibration.vibrate(100); // Vibrate for 100ms
+    }
+  }, [userMovement, targetDirection, recordingState.isRecording]);
+
 
   React.useEffect(() => {
     onRecordingStateChange(recordingState);
@@ -24,7 +55,15 @@ export const CameraView: React.FC<CameraViewProps> = ({ onRecordingStateChange }
         mode="video"
       />
       
+      {/* The existing MovementDisplay can be kept or removed */}
       <MovementDisplay 
+        userMovement={userMovement}
+        isVisible={recordingState.isRecording}
+      />
+
+      {/* Add the DirectionArrow component */}
+      <DirectionArrow
+        targetDirection={targetDirection}
         userMovement={userMovement}
         isVisible={recordingState.isRecording}
       />
@@ -43,10 +82,11 @@ export const CameraView: React.FC<CameraViewProps> = ({ onRecordingStateChange }
         />
       </View>
 
+      {/* You can update this instruction text */}
       {recordingState.isRecording && (
         <View style={styles.instructionContainer}>
           <Text style={styles.instructionText}>
-            Move your phone left or right to see direction text
+            Follow the arrow's direction
           </Text>
         </View>
       )}

@@ -39,3 +39,11 @@ export interface MovementDisplayProps {
 export interface CameraViewProps {
   onRecordingStateChange: (state: RecordingState) => void;
 }
+
+export type Direction = 'left' | 'right' | null;
+
+export interface ArrowProps {
+  targetDirection: Direction;
+  userMovement: UserMovementState;
+  isVisible: boolean;
+}
